@@ -1,43 +1,159 @@
+<script>
+import axios from "axios";
+import TableVue from "./TableVue.vue";
+
+export default {
+  props: {
+    msg: String,
+  },
+  components: { TableVue },
+  data() {
+    return {
+      form: {
+        id: "",
+        product_name: "",
+        price: "",
+      },
+      name: "Todo List",
+      products: [],
+      fields: ["product_name", "price", "id", "actions"],
+      query: "",
+      posts: [],
+    };
+  },
+
+  async mounted() {
+    let result = await axios.get(
+      `https://api.instantwebtools.net/v1/passenger?page=${0}&size=10`
+    );
+    this.posts = await result.data.data;
+    console.log(result.data);
+    let data = localStorage.getItem("products");
+    if (data) {
+      this.products = JSON.parse(data);
+    }
+  },
+  methods: {
+    add() {},
+    onSubmit(e) {
+      e.preventDefault();
+      let { products } = this;
+      if (products.some((i) => i.id == this.form.id)) {
+        console.log(products, this.form.id);
+        let index = this.products.findIndex((i) => i.id == this.form.id);
+        this.products[index] = {
+          product_name: this.form.product_name,
+          price: this.form.price,
+          id: this.form.id,
+        };
+        console.log(this.products, index);
+      } else {
+        this.form.id = Math.random().toString(9).slice(2, 7);
+        this.products.push({
+          product_name: this.form.product_name,
+          price: this.form.price,
+          id: this.form.id,
+        });
+      }
+      this.store(this.products);
+      this.form.product_name = "";
+      this.form.price = "";
+      this.form.id = "";
+    },
+    del(id) {
+      console.log(id);
+      this.products = this.products.filter((i) => i.id !== id);
+      this.store(this.products);
+    },
+    edit(prdt) {
+      this.form.id = prdt.id;
+      this.form.product_name = prdt.product_name;
+      this.form.price = prdt.price;
+    },
+    store(arr) {
+      localStorage.setItem("products", JSON.stringify(arr));
+    },
+    onSearch() {
+      console.log(this.query);
+      let results = JSON.parse(localStorage.getItem("products"));
+      if (this.query) {
+        console.log(results);
+        results = results.filter((i) => {
+          return i.product_name.includes(this.query);
+        });
+      } else {
+        // return;
+      }
+      console.log(results);
+      this.products = results;
+    },
+  },
+};
+</script>
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+  <div class="container">
+    <!-- <b-form @submit="onSubmit">
+      <b-form-group
+        id="input-group-2"
+        label="Product Name:"
+        label-for="input-2"
+      >
+        <b-form-input
+          id="input-2"
+          v-model="form.product_name"
+          placeholder="Enter product name"
+          required
+        ></b-form-input>
+      </b-form-group>
+
+      <b-form-group
+        id="input-group-2"
+        label="Product price:"
+        label-for="input-2"
+      >
+        <b-form-input
+          id="input-2"
+          pattern="^[1-9]\d*$"
+          title="Only numbers are allowed"
+          v-model="form.price"
+          placeholder="Enter price"
+          required
+        ></b-form-input>
+      </b-form-group>
+
+      <b-button type="submit" variant="primary" class="my-3">Submit</b-button>
+    </b-form>
+    <b-card class="mt-3" header="Form Data Result">
+      <b-form-input
+        id="inline-form-input-name"
+        class="mb-2 mr-sm-2 mb-sm-0"
+        placeholder="Search here..."
+        v-on:input="onSearch"
+        v-model="query"
+      ></b-form-input>
+
+      <b-table
+        :fields="this.fields"
+        :items="products"
+        v-if="products.length > 0"
+      >
+        <template #cell(actions)="row">
+          <b-button variant="outline-primary" size="md" @click="edit(row.item)"
+            >edit</b-button
+          >
+          <b-button
+            variant="outline-danger"
+            class="mx-2"
+            size="md"
+            @click="del(row.item.id)"
+            >delete</b-button
+          >
+        </template>
+      </b-table>
+    </b-card> -->
+    <TableVue/>
   </div>
 </template>
-
-<script>
-export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
@@ -54,5 +170,8 @@ li {
 }
 a {
   color: #42b983;
+}
+.container {
+  width: 50% !important;
 }
 </style>
